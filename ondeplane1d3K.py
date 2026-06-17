@@ -1,6 +1,6 @@
 ####------OndePlane-----###
 # Generation ondes planes et sommes
-# auteur : Panayotis Akridas , fridjine ibrahim dublanc matthieu et ikram
+# auteur : Panayotis Akridas   fridjine ibrahim dublanc mattheiu ikram
 # mail : pakridas@cyu.fr
 # contributeur : Claude de Anthropic AI pour consolider le code et ameliorer la representation graphique (9/5/2026 version non payante)
 # date creation : 4 mai 2026
@@ -55,6 +55,20 @@ def Compute_wavelength(k: float) -> float:
 def Compute_omega(k: float, speed: float = 1.0, dispersion_type: str = "linear") -> float:
     """
     Calcule la pulsation omega a partir de la relation de dispersion.
+
+    Parametres
+    ----------
+    k : float
+        Nombre d'onde [1/m].
+    speed : float
+        Vitesse de phase [L/T] (utilisee pour la dispersion lineaire).
+    dispersion_type : {'linear', 'schrodinger'}
+        Type de relation de dispersion.
+
+    Retourne
+    --------
+    float
+        Pulsation omega [rad/s].
     """
     k = Check_momentum(k)
     if dispersion_type == "linear":
@@ -72,6 +86,21 @@ def PlaneWave(amp, k, omega, x, t) -> numpy.ndarray:
     Onde plane complexe 1D : Psi(x,t) = amp * exp(i(kx - omega*t))
     Fonction demandee par le sujet (question 1.1.a).
 
+    Parametres
+    ----------
+    amp   : float
+        Amplitude de l'onde.
+    k     : float
+        Nombre d'onde [1/m].
+    omega : float
+        Pulsation [rad/s].
+    x     : array-like
+        Positions spatiales.
+    t     : float
+        Instant considere.
+
+    Retourne
+    --------
     numpy.ndarray : amplitude complexe de l'onde plane
     """
     x = numpy.asarray(x)
@@ -224,8 +253,11 @@ def Plot_re_im(k0=1.0, t=0.0):
 
 def Plot_waves(x, t, ondes: numpy.ndarray, liste_k: list, liste_n_osc: list) -> None:
     """
-    Trace chaque onde individuelle (partie reelle) et leur superposition.
-    Trace egalement l'enveloppe analytique pour 3 ondes (question 1.2.1.d).
+    Trace sur un seul graphique :
+      - la partie reelle de chaque onde individuelle
+      - la partie reelle de leur somme
+      - l'enveloppe analytique
+    Correspond a la question 1.2.1.d et 1.2.2 du sujet.
 
     Parametres
     ----------
@@ -247,39 +279,36 @@ def Plot_waves(x, t, ondes: numpy.ndarray, liste_k: list, liste_n_osc: list) -> 
         intervalle = t
 
     n_ondes = ondes.shape[0]
-    fig, axes = pyplot.subplots(n_ondes + 1, 1,
-                                figsize=(10, 2.5 * (n_ondes + 1)),
-                                sharex=True)
-    fig.suptitle("Superposition d'ondes planes", fontsize=14)
-
     couleurs = pyplot.cm.viridis(numpy.linspace(0.1, 0.85, n_ondes))
 
-    for i, ax in enumerate(axes[:-1]):
-        ax.plot(intervalle, numpy.real(ondes[i]), color=couleurs[i], linewidth=1.2)
-        lam = Compute_wavelength(liste_k[i])
-        ax.set_ylabel(f"onde {i}\n"
-                      f"k={liste_k[i]:.3g}, λ={lam:.2f}\n"
-                      f"n_osc={liste_n_osc[i]:.1f}",
-                      fontsize=8)
-        ax.tick_params(labelsize=8)
-        ax.grid(True, linewidth=0.4, alpha=0.5)
+    fig, ax = pyplot.subplots(figsize=(10, 5))
+    fig.suptitle("Superposition d'ondes planes", fontsize=14)
 
+    # Trace de la partie reelle de chaque onde
+    for i in range(n_ondes):
+        lam = Compute_wavelength(liste_k[i])
+        ax.plot(intervalle, numpy.real(ondes[i]),
+                color=couleurs[i], linewidth=1.2,
+                label=f"Re[onde {i}]  k={liste_k[i]:.3g}, λ={lam:.2f}")
+
+    # Trace de la partie reelle de la superposition
     superposition = numpy.real(numpy.sum(ondes, axis=0))
-    axes[-1].plot(intervalle, superposition, color="crimson", linewidth=1.5)
+    ax.plot(intervalle, superposition,
+            color="crimson", linewidth=2.0, label="Re[somme]")
 
     # Enveloppe analytique (question 1.2.1.d) : |1 + cos(delta_k/2 * x)|
     # Valable pour 3 ondes : k0-delta_k/2, k0, k0+delta_k/2 avec amplitudes 0.5, 1, 0.5
     if len(liste_k) == 3:
         delta_k = abs(liste_k[2] - liste_k[0])
         enveloppe = numpy.abs(1 + numpy.cos(delta_k / 2 * intervalle))
-        axes[-1].plot(intervalle,  enveloppe, color="black", lw=1.2, ls="--", label="enveloppe")
-        axes[-1].plot(intervalle, -enveloppe, color="black", lw=1.2, ls="--")
-        axes[-1].legend(fontsize=8)
+        ax.plot(intervalle,  enveloppe, color="black", lw=1.5, ls="--", label="enveloppe")
+        ax.plot(intervalle, -enveloppe, color="black", lw=1.5, ls="--")
 
-    axes[-1].set_ylabel("superposition", fontsize=8)
-    axes[-1].set_xlabel("x [m]")
-    axes[-1].tick_params(labelsize=8)
-    axes[-1].grid(True, linewidth=0.4, alpha=0.5)
+    ax.axhline(0, color="gray", lw=0.5, ls=":")
+    ax.set_xlabel("x [m]")
+    ax.set_ylabel("amplitude")
+    ax.legend(fontsize=9)
+    ax.grid(True, linewidth=0.4, alpha=0.5)
 
     pyplot.tight_layout()
     pyplot.show()
