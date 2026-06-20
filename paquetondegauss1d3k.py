@@ -1,86 +1,56 @@
-####------PaquetOndesGaussien-----###
-#Evolution d_un paquet d_ondes gaussien quantique (relation de dispersion Sch)
-#auteur : Panayotis Akridas
-#mail : pakridas@cyu.fr
-#contributeur : Claude de Anthropic AI exclusivement pour la partie graphique (animation) (16/5/2026 version non payante)
-#date creation : 16 mai 2026
-#version 2 : 17 mai 2026
-#todo : beaucoup de verification et d_amelioration pour eviter des paquets d_ondes non normalises
-###
+#PaquetOndesGaussien
 
 import numpy
 from numpy import pi, exp, sqrt, real, imag, zeros, linspace
-import matplotlib.pyplot as plt
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from scipy.stats import norm
 import scipy
 
-K0    = 1   # nombre d_onde central
-SIGMA = 0.2   # largeur gaussienne dans l_espace des k
-X0    = -20   # position initiale du paquet d_onde
-HBAR  = 1#   # cte de Planck
+# Parametres du paquet d_ondes initial
+K0    = 1   
+SIGMA = 0.2   
+X0    = -20   
+
+# Constantes physiques en unites reduites (hbar = m = 1)
+HBAR  = 1
 HBAR2 = HBAR*HBAR 
-MASS  = 1 #masse de la particule
+MASS  = 1 
 HALF = .5
 
-# 2.2.a — Constantes demandées par le sujet
-hbar = HBAR   # constante de Planck reduite [J.s]
-m    = MASS   # masse de la particule [kg]
+# Constantes demandees par le sujet
+hbar = HBAR   
+m    = MASS   
 
-# Intervalle espace
+# Grille d_espace
 X_MIN, X_MAX = -20, 100
 N_X          = 2000
 x            = numpy.linspace(X_MIN, X_MAX, N_X)
 
-
+# Gaussienne normalisee (via scipy) ; ne marche pas avec des complexes
 def Compute_re_norm_gaussian(x, mu, sigma):
-    """
-    Calcul d_une gaussienne de moyenne (centree sur) mu et d_ecart-type sigma a l_aide d_une fonction scipy
-    Remarque  : ne fonctionne pas si les parametres sont complexes
-    Interet : sans doute assez faible mais renvoie une gaussienne toujours normalisee a 1
-    """
     return norm.pdf(x, mu, sigma)
 
+# Gaussienne non normalisee ; fonctionne avec des arguments complexes
 def Compute_gaussian(x, mu, sigma):
-    """
-    Calcul d_une gaussienne non normalisee a 1, de moyenne (centree sur) mu et d_ecart-type sigma
-    !!! Remarque 1 : non normalisee a 1
-    Remarque 2 : fonctionne avec des complexes
-    A faire 1 : a normaliser ?
-    A faire 2 : verifier que pour x reel le resultat est coherent avec Compute_re_norm_gaussian
-    """
     return numpy.exp(-(x-mu)**2/(2 * sigma**2))
 
+# Vitesse de phase v_phi = hbar k0 / (2m)
 def Compute_phase_velocity(k0 = K0):
-    """
-    Calcule la vitesse de phase
-    """
     return HBAR*k0/(2*MASS)
 
+# Vitesse de groupe v_g = hbar k0 / m = 2 v_phi
 def Compute_group_velocity(k0 = K0):
-    """
-    Calcule la vitesse de groupe
-    """
     return Compute_phase_velocity(2*k0)
 
+# Integre |psi|^2 (Simpson) : doit valoir 1 pour une densite de probabilite
 def Check_normalization(function_array, x_interval):
-    """
-    Calcule l_integrane de $function_array
-    doit renvoyer 1 si $function_array est une densite de probabilite
-    Methode : integration numerique par la methode de simpson (peut etre lourd numeriquement mais plus precis)
-    """
     x_min = min(x_interval)
     x_max = max(x_interval)
     return scipy.integrate.simpson(function_array, x_interval)
 
-
+# Paquet gaussien au cours du temps ; non utilise ici
 def Compute_gaussian_wp_as_cct(x, t, sigma=SIGMA, k0=K0, x0=X0):
-    """
-        Calcule l_amplitude de probabilite d_un paquet d_onde gaussien au cours du temps avec l_expression de CCT [(16-a) p.61]
-        Remarque 1 : un terme en exp(i $phi) est absent => sans importance sur la densite
-        Remarque 2 : pas utilise
-    """
     a = 1/sigma
     a2 = a**2
     terme = 2*1j*HBAR*t/MASS
@@ -89,10 +59,8 @@ def Compute_gaussian_wp_as_cct(x, t, sigma=SIGMA, k0=K0, x0=X0):
     new_sigma = numpy.sqrt((a2+2*1j*HBAR*t/MASS)/2)
     return amplitude * numpy.exp(1j*k0*x) * Compute_gaussian(x, mu, new_sigma)
 
+# Paquet gaussien au cours du temps : c'est celui qu'on utilise
 def Compute_gaussian_wp(x, t, sigma=SIGMA, k0=K0, x0=X0):
-    """
-        Calcule l_amplitude de probabilite d_un paquet d_onde gaussien au cours du temps avec l_expression donnee en TD
-    """
     a = 1/sigma
     a2 = a**2
     terme = MASS*a2+2*1j*HBAR*t
@@ -101,110 +69,51 @@ def Compute_gaussian_wp(x, t, sigma=SIGMA, k0=K0, x0=X0):
     return amplitude * numpy.exp(inv_terme*MASS*(a2*k0+2*1j*x)**2/4) * Compute_gaussian(k0,0,numpy.sqrt(2)/a)
 
 
-
+# Densite initiale du paquet ; verification/debug
 def Compute_ini_gaussian2_wp_as_cct(x, sigma=SIGMA, k0=K0):
-    """
-        Calcule la densite de probabilite *initiale* du paquet d_onde gaussien avec l_expression de CCT [(10) p.60]
-        Interet : verification/debug
-    """
     sigma2 = sigma**2
     phase = numpy.exp(1j*k0*x)
     arg_exp = -sigma2*x**2    
     amplitude = numpy.power(2*sigma2/pi,0.25)
     return amplitude*phase*numpy.exp(arg_exp)
 
+# Position theorique du centre du paquet : <x> = v_g * t
 def Compute_analytic_gaussian_position(t, k0 = K0):
-    """
-        Calcul analytique de la position moyenne de la particule libre <=> max du paquet d_ondes gaussienn avec l_expression de CCT [(19) p.62]
-        Remarque : facilement demontrable a partir de l_expression generale de la densite gaussienne => pas de ref explicite a CCT
-        Interet : verification/debug
-    """
     return Compute_group_velocity(k0)*t
 
+# Dispersion theorique du paquet en fonction du temps
 def Compute_analytic_gaussian_spreading(t, sigma=SIGMA):
-    """
-        Calcul analytique de la dispersion de la densite de probabilite 
-        Interet : verification/debug
-    """ 
     return HALF/sigma * numpy.sqrt(1+(2*HBAR*t*sigma**2/MASS)**2)
 
+# Hauteur theorique du pic de densite en fonction du temps
 def Compute_analytic_gaussian_height(t, sigma=SIGMA):
-    """
-        Calcul analytique de la dispersion de la densite de probabilite 
-        Interet : verification/debug
-    """ 
     a=1/sigma
     a2 = a**2
     return numpy.sqrt(2/(pi*a2*(1+(2*HBAR*t/(MASS*a2))**2)))
 
+# Hauteur numerique (max de la densite)
 def Compute_numeric_height(array_function):
-    """
-        Calcul numerique de la hauteur de la densite de probabilite
-        Remarque : sans interet si array est complex
-        Interet : verification/debug
-    """
     return max(array_function)
 
-
+# Position numerique du maximum de la densite
 def Compute_numeric_position(array_function, x):
-    """
-        Calcul numerique de la position moyenne de la particule libre directement a partir de la densite <=> max du paquet d_ondes gaussien 
-        Remarque 1 : $array_function doit etre la densite de probabilite
-        Remarque 2 : fonction valable pour toute densite unimodale <=> un seul max
-        Remarque 3 : peut differer de Compute_analytic si $x n_est pas assez grand
-        Interet : verification/debug
-    """
     index_max = numpy.argmax(array_function) 
     return x[index_max]
 
+# Moment d'ordre donne de la densite (sert au calcul de la dispersion)
 def Compute_numeric_moment(array_function, x, moment):
-    """
-        Calcul numerique du moment de $array_function
-        Interet 1 : fonction generale utilisee dans Compute_numeric_spreading
-        Remarque : sans interet pour une gaussienne puisque elle est entierement determinee a partir de la moyenne et de sigma !
-    """
     array_moment = array_function*numpy.power(x, moment)
     return Check_normalization(array_moment, x)
 
+# Dispersion numerique : ecart-type calcule a partir des moments
 def Compute_numeric_spreading(array_function, x):
-    """
-        Calcul numerique de la dispersion de la particule libre directement a partir de la densite <=> max du paquet d_ondes 
-        Remarque 1 : $array_function doit etre la densite de probabilite
-        Remarque 2 : fonction valable pour toute densite unimodale <=> un seul max
-        Remarque 3 : peut differer de Compute_analytic si $x n_est pas assez grand
-        Interet : verification/debug 
-    """    
     mean_x  = Compute_numeric_moment(array_function, x, 1)
     mean_x2 = Compute_numeric_moment(array_function, x, 2)
     spreading = numpy.sqrt(mean_x2 - mean_x**2) 
     return spreading
 
-
-# ── 2.2.b — Fonction GaussWP  ───────────────────────────
-
+# Paquet d'ondes gaussien Psi(x,t) 
 def GaussWP(k0, a, x, t):
-    """
-    Calcule le paquet d'ondes gaussien Psi(x, t).
-    Correspond a l'expression du sujet (equation 5) :
-
-        Psi(x,t) = (1/8pi^3)^(1/4) * sqrt(4*pi*m*a / (m*a^2 + 2i*hbar*t))
-                   * exp( m/4 * (a^2*k0 + 2i*x)^2 / (m*a^2 + 2i*hbar*t) - a^2*k0^2/4 )
-
-    Parametres
-    ----------
-    k0 : float
-        Nombre d'onde central.
-    a : float
-        Parametre de largeur (a = 1/sigma).
-    x : array-like
-        Positions spatiales.
-    t : float
-        Instant considere.
-
-    Retourne
-    --------
-    numpy.ndarray : amplitude complexe Psi(x, t)
-    """
     x   = numpy.asarray(x, dtype=complex)
     a2  = a**2
     denominateur = m * a2 + 2j * hbar * t
@@ -213,22 +122,8 @@ def GaussWP(k0, a, x, t):
     return prefacteur * numpy.exp(exposant)
 
 
-# ── 2.2.c — Représentation Re(Psi) et Im(Psi) à t=0 ─────────────────────────
-
+# Trace Re(Psi) et Im(Psi) du paquet a t=0 
 def Plot_re_im_wp(k0=K0, a=1/SIGMA, t=0.0):
-    """
-    Represente Re(Psi) et Im(Psi) du paquet d'ondes gaussien en fonction de x a l'instant t.
-    Correspond a la question 2.2.c du sujet.
-
-    Difficulte (question 2.2.d) :
-        A t=0 et avec des valeurs physiques reelles de hbar et m (ex: electron),
-        le denominateur m*a^2 + 2i*hbar*t = m*a^2 est un reel tres petit,
-        ce qui rend le prefacteur enorme et cause des depassements numeriques (overflow).
-
-    Solution (question 2.2.e) :
-        Travailler en unites reduites : hbar=1, m=1 (comme dans ce code).
-        Ainsi les valeurs numeriques restent raisonnables et le calcul converge.
-    """
     psi = GaussWP(k0=k0, a=a, x=x, t=t)
 
     fig, ax = plt.subplots()
@@ -241,12 +136,8 @@ def Plot_re_im_wp(k0=K0, a=1/SIGMA, t=0.0):
     plt.show()
 
 
-# ── Animation ──────────────────────────────────────────────────────────────────
-
+# Anime l'evolution du paquet : densite |psi|^2 (+ Re/Im selon 'kind'), norme, position, dispersion
 def animate_wavepacket(t_max=30.0, n_frames=600, interval=10000000, kind=2):
-    """
-    Remarque : peut etre utilise pour representer la partie reelle et imaginaire de psi. Pas le temps d_ameliorer cette partie
-    """
     times = numpy.linspace(0, t_max, n_frames)
 
     #Calcul des donnees pour toutes les images
@@ -292,7 +183,6 @@ def animate_wavepacket(t_max=30.0, n_frames=600, interval=10000000, kind=2):
     fig.suptitle("Evolution du paquet d_onde gaussien", fontsize=13)
 
     (line_density,) = ax_density.plot(x, all_density[0], color="#3266ad", lw=2)
-#    (line_density2,) = ax_density.plot(x, all_density_pas[0], color="#ad5432", lw=1.25)
     ax_density.set_ylim(0, y_max_density)
     ax_density.set_xlim(X_MIN, X_MAX)
     ax_density.set_ylabel(r"$|\psi(x,t)|^2$", fontsize=11)
@@ -307,8 +197,7 @@ def animate_wavepacket(t_max=30.0, n_frames=600, interval=10000000, kind=2):
     height_text = ax_density.text(0.6, 0.90, "hauteur = 0.00",
                          transform=ax_density.transAxes, fontsize=10, color="#3266ad")
 
-    # Si partie reele et/ou imag
-      
+    # Sous-graphes Re et Im si demandes 
     if kind >1 :
         (line_re,) = ax_re.plot(x, all_re_psi[0], color="#1D9E75", lw=2)
         ax_re.axhline(0, color="gray", lw=0.5, ls="--")
@@ -326,9 +215,9 @@ def animate_wavepacket(t_max=30.0, n_frames=600, interval=10000000, kind=2):
 
     plt.tight_layout()
 
+    # Mise a jour d'une image de l'animation
     def update(frame):
         line_density.set_ydata(all_density[frame])
- #       line_density2.set_ydata(all_density_pas[frame])
         if kind > 1:
             line_re.set_ydata(all_re_psi[frame])
             if kind >2:
@@ -354,23 +243,19 @@ def animate_wavepacket(t_max=30.0, n_frames=600, interval=10000000, kind=2):
         repeat=True,
     )
 
-    # To save as MP4 (needs ffmpeg):
-    # ani.save("wavepacket.mp4", writer="ffmpeg", dpi=150)
-
     plt.show()
 
-
+#Main
 if __name__ == "__main__":
 
-    # --- 2.2.b : test de GaussWP -----------------------------------------
-    # Verification : la norme a t=0 doit etre proche de 1
+    # test de GaussWP (la norme a t=0 doit etre proche de 1)
     psi_test = GaussWP(k0=K0, a=1/SIGMA, x=x, t=0.0)
     densite_test = numpy.abs(psi_test)**2
     norme_test = scipy.integrate.simpson(densite_test, x)
     print(f"Test GaussWP — norme a t=0 : {norme_test:.6f} (doit etre proche de 1)")
 
-    # --- 2.2.c : trace Re et Im a t=0 ------------------------------------
+    # trace Re et Im a t=0 
     Plot_re_im_wp(k0=K0, a=1/SIGMA, t=0.0)
 
-    # --- Animation du paquet d'ondes -------------------------------------
+    # Animation du paquet d'ondes 
     animate_wavepacket(t_max=40, n_frames=2000, interval=100, kind=1)
