@@ -1,11 +1,4 @@
-####------OndePlane-----###
-# Generation ondes planes et sommes
-# auteur : Panayotis Akridas   fridjine ibrahim dublanc mattheiu ikram
-# mail : pakridas@cyu.fr
-# contributeur : Claude de Anthropic AI pour consolider le code et ameliorer la representation graphique (9/5/2026 version non payante)
-# date creation : 4 mai 2026
-# version 4 : 10 mai 2026
-###
+#OndePlane
 
 
 import numpy
@@ -15,24 +8,20 @@ import matplotlib.pyplot as plt
 
 DEUX_PI = 2 * numpy.pi
 
-
+# Renvoie le nombre d'elements de x (1 si c'est un scalaire)
 def Compute_length(x: float | numpy.ndarray | list) -> int:
-    """Determine le nombre d'elements dans la variable x (1 si scalaire)."""
     if isinstance(x, (numpy.ndarray, list)):
         return len(x)
     return 1
 
-
+# Determine si on simule selon l'espace ou selon le temps (selon ce qui varie)
 def Get_simulation_type(x, t) -> str:
-    """Retourne le type de simulation selon la longueur de x et t."""
     len_x = Compute_length(x)
     len_t = Compute_length(t)
     if len_x > 1 and len_t == 1:
         msg = "espace"
     elif len_x == 1 and len_t > 1:
         msg = "temps"
-    elif len_x == 1 and len_t > 1:
-        msg = "ici_maintenant mais sans interet"
     else:
         print("")
         print("         Desole JARVIS, mais je ne sais pas encore faire !")
@@ -40,92 +29,34 @@ def Get_simulation_type(x, t) -> str:
         exit()
     return msg
 
-
+# Force un nombre d'onde positif
 def Check_momentum(k: float) -> float:
-    """Verifie que le nombre d'onde est positif."""
     return abs(k)
 
-
+# Longueur d'onde lambda = 2*pi/k
 def Compute_wavelength(k: float) -> float:
-    """Calcule la longueur d'onde : lambda = 2*pi/k."""
     k = Check_momentum(k)
     return DEUX_PI / k
 
-
+# Pulsation omega selon la relation de dispersion (lineaire ou Schrodinger)
 def Compute_omega(k: float, speed: float = 1.0, dispersion_type: str = "linear") -> float:
-    """
-    Calcule la pulsation omega a partir de la relation de dispersion.
-
-    Parametres
-    ----------
-    k : float
-        Nombre d'onde [1/m].
-    speed : float
-        Vitesse de phase [L/T] (utilisee pour la dispersion lineaire).
-    dispersion_type : {'linear', 'schrodinger'}
-        Type de relation de dispersion.
-
-    Retourne
-    --------
-    float
-        Pulsation omega [rad/s].
-    """
     k = Check_momentum(k)
     if dispersion_type == "linear":
         return speed * k
     elif dispersion_type == "schrodinger":
-        hbar = 1.0546e-34   # [hbar] = M.L^2.T^{-1}
-        masse = 9.109e-31   # [masse] = M
+        hbar = 1.0546e-34   
+        masse = 9.109e-31   
         return hbar * k**2 / (2 * masse)
     else:
         raise ValueError(f"Type de dispersion inconnu : '{dispersion_type}'")
 
-
+# Onde plane complexe 1D : Psi = amp * exp(i(kx - omega*t))  
 def PlaneWave(amp, k, omega, x, t) -> numpy.ndarray:
-    """
-    Onde plane complexe 1D : Psi(x,t) = amp * exp(i(kx - omega*t))
-    Fonction demandee par le sujet (question 1.1.a).
-
-    Parametres
-    ----------
-    amp   : float
-        Amplitude de l'onde.
-    k     : float
-        Nombre d'onde [1/m].
-    omega : float
-        Pulsation [rad/s].
-    x     : array-like
-        Positions spatiales.
-    t     : float
-        Instant considere.
-
-    Retourne
-    --------
-    numpy.ndarray : amplitude complexe de l'onde plane
-    """
     x = numpy.asarray(x)
     return amp * numpy.exp(1j * (k * x - omega * t))
 
-
+# Onde plane avec calcul automatique de omega a partir de la dispersion
 def Compute_plane_wave(k: float, x, t, dispersion_type: str = "linear") -> numpy.ndarray:
-    """
-    Calcule une onde plane complexe en 1d avec calcul automatique de omega.
-
-    Parametres
-    ----------
-    k : float
-        Nombre d'onde [1/m].
-    x : array-like
-        Positions spatiales.
-    t : float ou array-like
-        Instant(s) considere(s).
-    dispersion_type : str
-        Type de relation de dispersion.
-
-    Retourne
-    --------
-    numpy.ndarray : amplitude complexe de l'onde plane
-    """
     k = Check_momentum(k)
     omega = Compute_omega(k, dispersion_type=dispersion_type)
     x = numpy.asarray(x)
@@ -133,20 +64,8 @@ def Compute_plane_wave(k: float, x, t, dispersion_type: str = "linear") -> numpy
     phase = 1j * (omega * t - k * x)
     return numpy.exp(phase)
 
-
-# ---------------------------------------------------------------------------
-# Diagnostics
-# ---------------------------------------------------------------------------
-
+# Compte les oscillations visibles et avertit si l'intervalle est trop petit/grand
 def Check_oscillations(k: float, x, t) -> tuple[float, str]:
-    """
-    Compte le nombre d'oscillations visibles sur l'intervalle et avertit
-    si ce nombre est trop faible ou trop eleve.
-
-    Retourne
-    --------
-    (n_oscillations, message)
-    """
     str_genre = Get_simulation_type(x, t)
 
     if str_genre == "espace":
@@ -171,30 +90,18 @@ def Check_oscillations(k: float, x, t) -> tuple[float, str]:
 
     return n_osc, msg
 
-
+# Periode temporelle T = 2*pi/omega
 def Compute_period(k):
-    """Calcule la periode temporelle T = 2*pi/omega."""
     omega = Compute_omega(k)
     periode = DEUX_PI / omega
     return periode
 
-
+# Suggere un nombre de points pour un trace lisible (facteur points par longueur d'onde)
 def Compute_n_pts(k: float, facteur: int = 500) -> int:
-    """
-    Suggere un nombre de points pour un trace agreable.
-
-    Parametres
-    ----------
-    k : float
-        Nombre d'onde [1/m].
-    facteur : int
-        Nombre de points par longueur d'onde.
-    """
     return int(facteur * Compute_wavelength(k))
 
-
+# Construit un resume texte des parametres de la simulation
 def Get_info(liste_k: list, x, t, n_ondes: int) -> list[str]:
-    """Construit un resume lisible des parametres de la simulation."""
 
     min_k = min(liste_k)
     max_k = max(liste_k)
@@ -224,19 +131,11 @@ def Get_info(liste_k: list, x, t, n_ondes: int) -> list[str]:
         ""]
     return lignes
 
-
-# ---------------------------------------------------------------------------
 # Representation graphique
-# ---------------------------------------------------------------------------
 
+# Trace Re(Psi) et Im(Psi) d'une onde plane en fonction de x 
 def Plot_re_im(k0=1.0, t=0.0):
-    """
-    Represente Re(Psi) et Im(Psi) en fonction de x a l'instant t.
-    Correspond a la question 1.1.b du sujet.
-    Utilise la syntaxe exacte demandee : fig, ax = plt.subplots() et ax.plot()
-    """
     omega = Compute_omega(k0)
-    # Intervalle : 3 longueurs d'onde
     x_trace = linspace(0, 3 * DEUX_PI / k0, 1000)
 
     psi = PlaneWave(amp=1.0, k=k0, omega=omega, x=x_trace, t=t)
@@ -250,28 +149,8 @@ def Plot_re_im(k0=1.0, t=0.0):
     ax.legend()
     plt.show()
 
-
+# Trace les ondes individuelles, leur somme et l'enveloppe 
 def Plot_waves(x, t, ondes: numpy.ndarray, liste_k: list, liste_n_osc: list) -> None:
-    """
-    Trace sur un seul graphique :
-      - la partie reelle de chaque onde individuelle
-      - la partie reelle de leur somme
-      - l'enveloppe analytique
-    Correspond a la question 1.2.1.d et 1.2.2 du sujet.
-
-    Parametres
-    ----------
-    x : array
-        Grille spatiale.
-    t : float
-        Instant considere.
-    ondes : ndarray, taille (n_ondes, n_pts)
-        Amplitudes complexes des ondes.
-    liste_k : list
-        Nombres d'onde (un par ligne dans ondes).
-    liste_n_osc : list
-        Nombre d'oscillations par onde (pour les legendes).
-    """
     genre = Get_simulation_type(x, t)
     if genre == 'espace':
         intervalle = x
@@ -284,20 +163,17 @@ def Plot_waves(x, t, ondes: numpy.ndarray, liste_k: list, liste_n_osc: list) -> 
     fig, ax = pyplot.subplots(figsize=(10, 5))
     fig.suptitle("Superposition d'ondes planes", fontsize=14)
 
-    # Trace de la partie reelle de chaque onde
     for i in range(n_ondes):
         lam = Compute_wavelength(liste_k[i])
         ax.plot(intervalle, numpy.real(ondes[i]),
                 color=couleurs[i], linewidth=1.2,
                 label=f"Re[onde {i}]  k={liste_k[i]:.3g}, λ={lam:.2f}")
 
-    # Trace de la partie reelle de la superposition
     superposition = numpy.real(numpy.sum(ondes, axis=0))
     ax.plot(intervalle, superposition,
             color="crimson", linewidth=2.0, label="Re[somme]")
 
-    # Enveloppe analytique (question 1.2.1.d) : |1 + cos(delta_k/2 * x)|
-    # Valable pour 3 ondes : k0-delta_k/2, k0, k0+delta_k/2 avec amplitudes 0.5, 1, 0.5
+    # Enveloppe analytique |1 + cos(delta_k/2 * x)| (valable pour 3 ondes 0.5/1/0.5)
     if len(liste_k) == 3:
         delta_k = abs(liste_k[2] - liste_k[0])
         enveloppe = numpy.abs(1 + numpy.cos(delta_k / 2 * intervalle))
@@ -314,44 +190,39 @@ def Plot_waves(x, t, ondes: numpy.ndarray, liste_k: list, liste_n_osc: list) -> 
     pyplot.show()
 
 
-# ---------------------------------------------------------------------------
-# Programme principal
-# ---------------------------------------------------------------------------
+#Main
 
 if __name__ == "__main__":
 
-    # --- Parametres des nombres d'onde -----------------------------------
+    # Parametres des nombres d'onde
     k_centre = 1.0
     delta_k  = k_centre / 10
 
-    # --- Grille spatiale : intervalle [-pi/delta_k, pi/delta_k] (sujet 1.2.1.d) ---
+    # Grille spatiale [-pi/delta_k, pi/delta_k] 
     x_ini = -numpy.pi / delta_k
     x_fin =  numpy.pi / delta_k
     n_pts = Compute_n_pts(k_centre)
     x = numpy.linspace(x_ini, x_fin, n_pts)
 
-    # --- Instant initial -------------------------------------------------
+    # Instant initial 
     t = 0.0
 
-    # --- 3 ondes du sujet (question 1.2.1.b) : k0-delta_k/2, k0, k0+delta_k/2 ---
+    # 3 ondes du sujet : k0-delta_k/2, k0, k0+delta_k/2 
     liste_k = [
         k_centre - delta_k / 2,
         k_centre,
         k_centre + delta_k / 2,
     ]
-    # Amplitudes : 1 pour k0, 1/2 pour les deux ondes laterales (enonce 1.2.1.b)
-    liste_amp = [0.5, 1.0, 0.5]
+    
+    liste_amp = [0.5, 1.0, 0.5] # amplitude 1 pour k0, 1/2 pour les laterales
     n_ondes = 3
 
-    # --- Affichage du type de simulation ---------------------------------
     print(Get_simulation_type(x, t))
 
-    # --- Affichage du resume de la simulation ----------------------------
     for ligne in Get_info(liste_k[:n_ondes], x, t, n_ondes):
         print(ligne)
 
-    # --- Calcul des ondes ------------------------------------------------
-    # Tableau de zeros de taille n_ondes x n_pts
+    # Calcul des ondes 
     ondes = numpy.zeros((n_ondes, n_pts), dtype=complex)
     liste_n_osc: list[float] = []
     liste_msg:   list[str]   = []
@@ -365,7 +236,7 @@ if __name__ == "__main__":
         liste_n_osc.append(n_osc)
         liste_msg.append(msg)
 
-    # --- Affichage du rapport par onde -----------------------------------
+    # Rapport par onde 
     for i in range(n_ondes):
         lam = Compute_wavelength(liste_k[i])
         ligne = (f"Onde n°{i}  lambda={lam:.2f} m  "
@@ -374,8 +245,8 @@ if __name__ == "__main__":
             ligne += f"  {liste_msg[i]}"
         print(ligne)
 
-    # --- 1.1.b : trace Re et Im de l'onde centrale ----------------------
+    # Trace Re et Im de l'onde centrale 
     Plot_re_im(k0=k_centre, t=t)
 
-    # --- 1.2 : trace superposition + enveloppe --------------------------
+    # Trace superposition + enveloppe 
     Plot_waves(x, t, ondes, liste_k[:n_ondes], liste_n_osc)
